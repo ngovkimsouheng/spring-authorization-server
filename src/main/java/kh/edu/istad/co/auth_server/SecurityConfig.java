@@ -14,9 +14,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
@@ -34,7 +31,6 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
-import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
@@ -42,12 +38,12 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import javax.sql.DataSource;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Configuration
@@ -61,20 +57,20 @@ public class SecurityConfig {
                 OAuth2AuthorizationServerConfigurer.authorizationServer();
 
         http
-            .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-            .with(authorizationServerConfigurer, (authorizationServer) ->
-                authorizationServer.oidc(Customizer.withDefaults())
-            )
-            .authorizeHttpRequests((authorize) ->
-                authorize.anyRequest().authenticated()
-            )
-            .cors(Customizer.withDefaults())
-            .exceptionHandling((exceptions) -> exceptions
-                .defaultAuthenticationEntryPointFor(
-                    new LoginUrlAuthenticationEntryPoint("/login"),
-                    new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
+                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .with(authorizationServerConfigurer, (authorizationServer) ->
+                        authorizationServer.oidc(Customizer.withDefaults())
                 )
-            );
+                .authorizeHttpRequests((authorize) ->
+                        authorize.anyRequest().authenticated()
+                )
+                .cors(Customizer.withDefaults())
+                .exceptionHandling((exceptions) -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
+                        )
+                );
 
         return http.build();
     }
@@ -83,9 +79,13 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-            .authorizeHttpRequests((authorize) -> authorize.anyRequest().authenticated())
-            .cors(Customizer.withDefaults())
-            .formLogin(Customizer.withDefaults());
+                .cors(Customizer.withDefaults())
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/auth/register"))
+                .authorizeHttpRequests(authorize -> authorize
+                        .requestMatchers("/api/v1/auth/register", "/error").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .formLogin(Customizer.withDefaults());
 
         return http.build();
     }
@@ -101,11 +101,6 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
-    }
-
-    @Bean
-    public UserDetailsService userDetailsService(DataSource dataSource) {
-        return new JdbcUserDetailsManager(dataSource);
     }
 
     @Bean
@@ -130,19 +125,20 @@ public class SecurityConfig {
 
     @Bean
     public ApplicationRunner dataInitializer(
-            UserDetailsService userDetailsService,
+            UserRepository userRepository,
+            RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
             RegisteredClientRepository registeredClientRepository) {
         return args -> {
-            JdbcUserDetailsManager userManager = (JdbcUserDetailsManager) userDetailsService;
+            RoleEntity userRole = roleRepository.findByName("ROLE_USER")
+                    .orElseGet(() -> roleRepository.save(new RoleEntity("ROLE_USER")));
 
-            if (!userManager.userExists("user1")) {
-                UserDetails user = User.builder()
-                        .username("user1")
-                        .password(passwordEncoder.encode("password"))
-                        .roles("USER")
-                        .build();
-                userManager.createUser(user);
+            if (!userRepository.existsByUsername("user1")) {
+                UserEntity user = new UserEntity();
+                user.setUsername("user1");
+                user.setPassword(passwordEncoder.encode("password"));
+                user.setRoles(Set.of(userRole));
+                userRepository.save(user);
             }
 
             if (registeredClientRepository.findByClientId("public-client") == null) {
@@ -155,6 +151,7 @@ public class SecurityConfig {
                         .redirectUri("http://127.0.0.1:3000/callback")
                         .scope(OidcScopes.OPENID)
                         .scope(OidcScopes.PROFILE)
+                        .scope("offline_access")
                         .scope("read")
                         .clientSettings(ClientSettings.builder()
                                 .requireAuthorizationConsent(true)
