@@ -37,100 +37,100 @@ import java.util.UUID;
 @EnableWebSecurity
 public class SecurityConfig {
 
-@Bean
-@Order(1)
-public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
-OAuth2AuthorizationServerConfigurer.authorizationServer();
+    @Bean
+    @Order(1)
+    public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
+        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
+                OAuth2AuthorizationServerConfigurer.authorizationServer();
 
-http
-.securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-.with(authorizationServerConfigurer, (authorizationServer) ->
-authorizationServer.oidc(Customizer.withDefaults())
-)
-.authorizeHttpRequests((authorize) ->
-authorize.anyRequest().authenticated()
-)
-.exceptionHandling((exceptions) -> exceptions
-.defaultAuthenticationEntryPointFor(
-new LoginUrlAuthenticationEntryPoint("/login"),
-new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
-)
-);
+        http
+                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+                .with(authorizationServerConfigurer, (authorizationServer) ->
+                        authorizationServer.oidc(Customizer.withDefaults())
+                )
+                .authorizeHttpRequests((authorize) ->
+                        authorize.anyRequest().authenticated()
+                )
+                .exceptionHandling((exceptions) -> exceptions
+                        .defaultAuthenticationEntryPointFor(
+                                new LoginUrlAuthenticationEntryPoint("/login"),
+                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
+                        )
+                );
 
-return http.build();
-}
+        return http.build();
+    }
 
-@Bean
-@Order(2)
-public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
-http
-.authorizeHttpRequests((authorize) -> authorize
-.requestMatchers("/user/register", "/login", "/error").permitAll()
-.anyRequest().authenticated()
-)
-.formLogin(Customizer.withDefaults());
+    @Bean
+    @Order(2)
+    public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .authorizeHttpRequests((authorize) -> authorize
+                        .requestMatchers("/user/register", "/login", "/error").permitAll()
+                        .anyRequest().authenticated()
+                )
+                .formLogin(Customizer.withDefaults());
 
-return http.build();
-}
+        return http.build();
+    }
 
-@Bean
-public PasswordEncoder passwordEncoder() {
-return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-}
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
+    }
 
-@Bean
-public JWKSource<SecurityContext> jwkSource() {
-KeyPair keyPair = generateRsaKey();
-RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
-RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
-RSAKey rsaKey = new RSAKey.Builder(publicKey)
-.privateKey(privateKey)
-.keyID(UUID.randomUUID().toString())
-.build();
-JWKSet jwkSet = new JWKSet(rsaKey);
-return new ImmutableJWKSet<>(jwkSet);
-}
+    @Bean
+    public JWKSource<SecurityContext> jwkSource() {
+        KeyPair keyPair = generateRsaKey();
+        RSAPublicKey publicKey = (RSAPublicKey) keyPair.getPublic();
+        RSAPrivateKey privateKey = (RSAPrivateKey) keyPair.getPrivate();
+        RSAKey rsaKey = new RSAKey.Builder(publicKey)
+                .privateKey(privateKey)
+                .keyID(UUID.randomUUID().toString())
+                .build();
+        JWKSet jwkSet = new JWKSet(rsaKey);
+        return new ImmutableJWKSet<>(jwkSet);
+    }
 
-private static KeyPair generateRsaKey() {
-try {
-KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
-keyPairGenerator.initialize(2048);
-return keyPairGenerator.generateKeyPair();
-} catch (Exception ex) {
-throw new IllegalStateException(ex);
-}
-}
+    private static KeyPair generateRsaKey() {
+        try {
+            KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
+            keyPairGenerator.initialize(2048);
+            return keyPairGenerator.generateKeyPair();
+        } catch (Exception ex) {
+            throw new IllegalStateException(ex);
+        }
+    }
 
-@Bean
-public AuthorizationServerSettings authorizationServerSettings() {
-return AuthorizationServerSettings.builder().build();
-}
+    @Bean
+    public AuthorizationServerSettings authorizationServerSettings() {
+        return AuthorizationServerSettings.builder().build();
+    }
 
-@Bean
-public ApplicationRunner clientInitializer(RegisteredClientRepository registeredClientRepository, PasswordEncoder encoder) {
-return args -> {
-if (registeredClientRepository.findByClientId("oidc-client") == null) {
-RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
-.clientId("oidc-client")
-.clientSecret(encoder.encode("secret"))
-.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
-.clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
-.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-.authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-.authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
-.redirectUri("https://oauth.pstmn.io/v1/callback")
-.redirectUri("http://127.0.0.1:8080/login/oauth2/code/oidc-client")
-.postLogoutRedirectUri("http://127.0.0.1:8080/")
-.scope(OidcScopes.OPENID)
-.scope(OidcScopes.PROFILE)
-.scope("read")
-.scope("write")
-.clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
-.build();
+    @Bean
+    public ApplicationRunner clientInitializer(RegisteredClientRepository registeredClientRepository, PasswordEncoder encoder) {
+        return args -> {
+            if (registeredClientRepository.findByClientId("oidc-client") == null) {
+                RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
+                        .clientId("oidc-client")
+                        .clientSecret(encoder.encode("secret"))
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                        .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                        .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                        .authorizationGrantType(AuthorizationGrantType.CLIENT_CREDENTIALS)
+                        .redirectUri("https://oauth.pstmn.io/v1/callback")
+                        .redirectUri("http://127.0.0.1:9000/login/oauth2/code/oidc-client")
+                        .postLogoutRedirectUri("http://127.0.0.1:9000/")
+                        .scope(OidcScopes.OPENID)
+                        .scope(OidcScopes.PROFILE)
+                        .scope("read")
+                        .scope("write")
+                        .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+                        .build();
 
-registeredClientRepository.save(oidcClient);
-}
-};
-}
-}
+                registeredClientRepository.save(oidcClient);
+            }
+        };
+    }
+    }
