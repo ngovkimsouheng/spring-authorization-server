@@ -1,4 +1,4 @@
-package kh.edu.istad.co.auth_server;
+package kh.edu.istad.co.auth_server.controller;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;

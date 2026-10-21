@@ -1,6 +1,10 @@
-package kh.edu.istad.co.auth_server;
+package kh.edu.istad.co.auth_server.controller;
 
-import org.springframework.http.HttpStatus;
+import kh.edu.istad.co.auth_server.dto.RegisterRequest;
+import kh.edu.istad.co.auth_server.entity.RoleEntity;
+import kh.edu.istad.co.auth_server.entity.UserEntity;
+import kh.edu.istad.co.auth_server.repository.RoleRepository;
+import kh.edu.istad.co.auth_server.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,28 +30,20 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<?> registerUser(@RequestBody RegisterRequest request) {
-        if (userRepository.existsByUsername(request.username())) {
-            return ResponseEntity
-                    .status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "Username already exists"));
+    public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
+        if (userRepository.existsByUsername(request.getUsername())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Username already exists"));
         }
 
         RoleEntity defaultRole = roleRepository.findByName("ROLE_USER")
                 .orElseGet(() -> roleRepository.save(new RoleEntity("ROLE_USER")));
 
         UserEntity user = new UserEntity();
-        user.setUsername(request.username());
-        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRoles(Set.of(defaultRole));
 
         userRepository.save(user);
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(Map.of(
-                        "message", "User created successfully via JPA",
-                        "username", request.username()
-                ));
+        return ResponseEntity.ok(Map.of("message", "User registered successfully"));
     }
 }

@@ -1,5 +1,6 @@
-package kh.edu.istad.co.auth_server;
+package kh.edu.istad.co.auth_server.repository;
 
+import kh.edu.istad.co.auth_server.entity.RoleEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.Optional;
 

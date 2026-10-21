@@ -1,4 +1,4 @@
-package kh.edu.istad.co.auth_server;
+package kh.edu.istad.co.auth_server.entity;
 
 import jakarta.persistence.*;
 
@@ -20,6 +20,8 @@ public class RoleEntity {
     }
 
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 }

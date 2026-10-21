@@ -1,10 +1,14 @@
-package kh.edu.istad.co.auth_server;
+package kh.edu.istad.co.auth_server.config;
 
 import com.nimbusds.jose.jwk.JWKSet;
 import com.nimbusds.jose.jwk.RSAKey;
 import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
+import kh.edu.istad.co.auth_server.entity.RoleEntity;
+import kh.edu.istad.co.auth_server.entity.UserEntity;
+import kh.edu.istad.co.auth_server.repository.RoleRepository;
+import kh.edu.istad.co.auth_server.repository.UserRepository;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -57,20 +61,20 @@ public class SecurityConfig {
                 OAuth2AuthorizationServerConfigurer.authorizationServer();
 
         http
-                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, (authorizationServer) ->
-                        authorizationServer.oidc(Customizer.withDefaults())
+            .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
+            .with(authorizationServerConfigurer, (authorizationServer) ->
+                authorizationServer.oidc(Customizer.withDefaults())
+            )
+            .authorizeHttpRequests((authorize) ->
+                authorize.anyRequest().authenticated()
+            )
+            .cors(Customizer.withDefaults())
+            .exceptionHandling((exceptions) -> exceptions
+                .defaultAuthenticationEntryPointFor(
+                    new LoginUrlAuthenticationEntryPoint("/login"),
+                    new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
                 )
-                .authorizeHttpRequests((authorize) ->
-                        authorize.anyRequest().authenticated()
-                )
-                .cors(Customizer.withDefaults())
-                .exceptionHandling((exceptions) -> exceptions
-                        .defaultAuthenticationEntryPointFor(
-                                new LoginUrlAuthenticationEntryPoint("/login"),
-                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
-                        )
-                );
+            );
 
         return http.build();
     }
@@ -79,13 +83,13 @@ public class SecurityConfig {
     @Order(2)
     public SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/auth/register"))
-                .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/v1/auth/register", "/error").permitAll()
-                        .anyRequest().authenticated()
-                )
-                .formLogin(Customizer.withDefaults());
+            .cors(Customizer.withDefaults())
+            .csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/auth/register"))
+            .authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/api/v1/auth/register", "/error").permitAll()
+                .anyRequest().authenticated()
+            )
+            .formLogin(Customizer.withDefaults());
 
         return http.build();
     }
@@ -144,7 +148,9 @@ public class SecurityConfig {
             if (registeredClientRepository.findByClientId("public-client") == null) {
                 RegisteredClient pkceClient = RegisteredClient.withId(UUID.randomUUID().toString())
                         .clientId("public-client")
-                        .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                        .clientSecret(passwordEncoder.encode("password"))
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_POST)
+                        .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                         .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
                         .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
                         .redirectUri("https://oauth.pstmn.io/v1/callback")

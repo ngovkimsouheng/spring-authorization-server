@@ -1,5 +1,7 @@
-package kh.edu.istad.co.auth_server;
+package kh.edu.istad.co.auth_server.service;
 
+import kh.edu.istad.co.auth_server.entity.UserEntity;
+import kh.edu.istad.co.auth_server.repository.UserRepository;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
